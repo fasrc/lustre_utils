@@ -10,7 +10,8 @@ SYNOPSIS
 
 DESCRIPTION
     This script is a wrapper for the standard lfs find ... | lfs_migrate ... 
-    procedure to move files off of one or more OSTs.
+    procedure to move files off of one or more OSTs or rebalance file 
+    distribution when adding new OSTs.
 
     ROOT_PATH is the starting point in which to find files.  It must be 
     absolute (actually, that's probably not required anymore, but still a good 

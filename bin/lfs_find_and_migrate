@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+set -e
+
+helpstr="\
+NAME
+    lfs_find_and_migrate - move files off OSTs
+
+SYNOPSIS
+    lfs_find_and_migrate [--min-size SIZE] ROOT_PATH OST...
+
+DESCRIPTION
+    This script is a wrapper for the standard lfs find ... | lfs_migrate ... 
+    procedure to move files off of one or more OSTs.
+
+    ROOT_PATH is the starting point in which to find files.  It must be 
+    absolute (actually, that's probably not required anymore, but still a good 
+    idea as that's the only way I ever run this).
+
+    OST is the OST off which to migrate.  More than one may be specified.  They 
+    must be deactivated on the MDS (but not the client); this script does not 
+    verify that.  Often you want to work with an entire OSS; run
+    \`lctl dl | grep OST | awk '{print \$4}' on the OSS to get a list of its 
+    OSTs.
+
+    Other notes worth repeating about lfs_migrate in general:
+
+    - If it hits an error, it quits and does not process the rest of its 
+      arguments, so the same applies to this script.
+
+    - It skips symlinks, and only says so on stdout, not stderr.  You could add 
+      -l below, but that'd unlink them; see lfs_migrate_hardlinks for an 
+      alternative.
+
+OPTIONS
+    --min-size SIZE
+        Minimum size of files to migrate.
+        SIZE can be 1M, 4G, etc.
+        Default is no minimum.
+    
+    --dry-run
+        Pass -n to lfs_migrate (only print the names of files to be migrated).
+
+    -h, --help
+        Print this help.
+
+REQUIREMENTS
+    lustre client (lfs binary and lfs_migrate script)
+
+AUTHOR
+    John Brunelle
+    Harvard FAS Research Computing
+"
+
+min_size=''
+dry_run=false
+
+args=$(getopt -l min-size:,dry-run,help -o h -- "$@")
+if [ $? -ne 0 ]; then
+	exit 65  #(getopt will have written the error message)
+fi
+eval set -- "$args"
+while [ ! -z "$1" ]; do
+	case "$1" in
+		--min-size)
+			min_size="$2"
+			shift
+			;;
+		--dry-run)
+			dry_run=true
+			;;
+
+		-h | --help)
+			echo -n "$helpstr"
+			exit 0
+			;;
+		--) 
+			shift
+			break
+			;;
+	esac
+	shift
+done
+
+root_path="$1"
+shift;
+
+if [ -z "$root_path" ]; then
+	echo "*** ERROR *** must provide ROOT_PATH (first argument)" >&2
+	exit 1
+fi
+
+if [ -z "$1" ]; then
+	echo "*** ERROR *** must provide at least one OST name (second argument)" >&2
+	exit 1
+fi
+
+if ! rsync --version | head -n 1 | grep -q 'version 3'; then
+	echo "*** ERROR *** use rsync version 3" >&2  #can't remember if this is strictly required, but it's a good idea
+	exit 1
+fi
+
+set -u
+
+
+#---
+
+
+##IMPORTANT, cwd needs to be on lustre fs (why?! I originally made this conclusion, but now I'm not sure why, lfs_migrate seems to make the tmp file as a sibling to the original)
+#cd "$root_path"
+
+#echo "using rsync: $(which rsync)"
+
+size_args=''
+test -n "$min_size" && size_args="-size +$min_size"
+
+ost_args=''
+for ost in "$@"; do
+	ost_args="$ost_args -O$ost"  #the lack of space between -O and "$ost" is important
+done
+
+lfs_migrate_args=''
+$dry_run && lfs_migrate_args="$lfs_migrate_args -n"
+
+lfs find "$root_path" $size_args $ost_args | lfs_migrate -y $lfs_migrate_args

@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+
+"""\
+NAME
+    lfs_migrate_hardlinks - run lfs_migrate, taking into consideration hardlinks
+
+SYNOPSIS
+    lfs_migrate_hardlinks FILENAME...
+
+DESCRIPTION
+    WARNING: do NOT split input up to multiple calls, e.g. with xargs!  This 
+    only handles hardlinks correctly if all links are included in the arguments.
+
+    This sorts into sets of hardlinked files, lfs_migrates one (lfs_migrate 
+    needs -l in that case), and then rms and re-lns the rest to the migrated 
+    file.
+
+    Normal files with just one link work fine, too.
+
+    If there is any issue with stating a file, it's skipped, and message is 
+    noted on stderr, and the processing of other files continues.
+
+OPTIONS
+    -n, --no-op
+        Print commands to run instead of running them.
+        Note that script has better control compared to running the output from 
+        a --no-op run, e.g. it'll move on to another inode if one is failing.
+
+        (This is named -n to be consitent with lfs_migrate's -n.)
+
+    -h, --help
+        Print this help.
+
+REQUIREMENTS
+    lustre client (lfs binary and lfs_migrate script)
+
+AUTHOR
+    John Brunelle
+    Harvard FAS Research Computing
+"""
+
+import sys, getopt, os, stat, subprocess
+
+no_op = False
+
+try:
+	opts, args = getopt.gnu_getopt(sys.argv[1:], 'nh', ('no_op','help',))
+except getopt.GetoptError, e:
+	sys.stderr.write("*** ERROR **** unable to process command line options: %s\n" % e)
+	sys.exit(1)
+for opt, optarg in opts:
+	if   opt in ('-n', '--no_op'):
+		no_op = True
+	
+	elif opt in ('-h', '--help'):
+		sys.stdout.write(__doc__)
+		sys.exit(0)
+
+
+#---
+
+
+def shQuote(text):
+	"""quote the given text so that it is a single, safe string in sh code.
+
+	Note that this leaves literal newlines alone (sh and bash are fine with that, but other tools may mess them up and need to do some special handling on the output of this function).
+	"""
+	return "'%s'" % text.replace("'", r"'\''")
+
+
+#--- make a pass over all args, binning by inode number
+
+linkedfiles = {}  #keyed by inode number, value is list of files
+
+print "#stat-ing all filenames (this may take a while...)"
+
+for filename in args:
+	s = os.stat(filename)
+
+	try:
+		if not stat.S_ISREG(os.stat(filename).st_mode):
+			sys.stderr.write("WARNING: path [%s] is not a regular file, skipping\n" % filename)
+			continue
+	
+		inum = os.stat(filename).st_ino
+		
+		if linkedfiles.has_key(inum):
+			linkedfiles[inum].append(filename)
+		else:
+			linkedfiles[inum] = [filename]
+	except Exception:
+		sys.stderr.write("WARNING: failure to stat or otherwise work with file [%s]\n" % filename)
+		continue
+
+print
+
+
+#--- process each inode number
+
+for inum, filenames in linkedfiles.items():
+	print "#working on inode number: %d (%d files)" % (inum, len(filenames))
+	
+	#lfs_migrate the first one
+	sh = 'lfs_migrate -l -y %s' % (shQuote(filenames[0]))
+	if no_op:
+		print sh
+	else:
+		rc = subprocess.call(sh, shell=True)  #(stdout and stderr are forwarded)
+		if rc!=0:
+			sys.stderr.write("WARNING: lfs_migrate of [%s] failed with status [%s], skipping inode number [%d]\n" % (filenames[0], (rc,128-rc)[rc<0], inum))
+			continue
+
+	#rm/ln the rest
+	for filename in filenames[1:]:
+		sh = 'rm -v %s && ln -v %s %s' % (shQuote(filename), shQuote(filenames[0]), shQuote(filename))
+		if no_op:
+			print sh
+		else:
+			rc = subprocess.call(sh, shell=True)  #(stdout and stderr are forwarded)
+			if rc!=0:
+				sys.stderr.write("WARNING: rm/ln of [%s] failed with status [%s], skipping it\n" % (filenames, (rc,128-rc)[rc<0]))
+	
+	print

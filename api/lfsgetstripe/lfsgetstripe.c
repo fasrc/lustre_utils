@@ -37,8 +37,13 @@ Harvard FAS Research Computing
 #include <lustre/liblustreapi.h>
 #include <lustre/lustre_user.h>
 
-//(MAX_OSTS here is really maximum stripe count (the lov_user_md_v1 object needs room for the data for each stripe); this should really use LOV_MAX_STRIPE_COUNT from lustre_idl.h, which is 160 as of 1.8.7)
+//MAX_OSTS here is really maximum stripe count (the lov_user_md_v1 object needs 
+//room for the data for each stripe).  This should really use 
+//LOV_MAX_STRIPE_COUNT from lustre_idl.h, which is 160 as of 1.8.7.  Also as of 
+//1.8.7, support for each additional stripe adds 24 bytes to the size (more 
+//specifically, lum->lmm_objects is 24 bytes).
 #define MAX_OSTS 1024
+
 #define LOV_EA_SIZE(lum, num) (sizeof(*lum) + num * sizeof(*lum->lmm_objects))
 #define LOV_EA_MAX(lum) LOV_EA_SIZE(lum, MAX_OSTS)
 

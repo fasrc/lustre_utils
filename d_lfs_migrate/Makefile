@@ -13,7 +13,8 @@ clean:
 
 test_args:
 ifndef D_LFS_MIGRATE_TEST_ARGS
-	$(error You must set the D_LFS_MIGRATE_TEST_ARGS environment variable to the path to test)
-	#e.g. to just show files to be migrated on OSTs 7, 8, and 9:
-	#	export D_LFS_MIGRATE_TEST_ARGS='-n -b10 -o7 -o8 -o9 /SOME/PATH'
+	$(warning `make test' requires the D_LFS_MIGRATE_TEST_ARGS environment variable be set.)
+	$(warning For example, to just show files to be migrated on OSTs 7, 8, and 9:)
+	$(warning export D_LFS_MIGRATE_TEST_ARGS='-n -b10 -o7 -o8 -o9 /SOME/PATH')
+	$(error You must set the D_LFS_MIGRATE_TEST_ARGS environment variable.)
 endif

@@ -1,0 +1,118 @@
+.TH D_LFS_MIGRATE 1 2013-07-20 fasrc " "
+
+
+.SH NAME
+
+d_lfs_migrate \- distributed, combined lsf find and lfs_migrate
+
+
+.SH SYNOPSIS
+
+.B d_lfs_migrate
+.BR \-\-ost-number-base " BASE"
+.BR \-\-ost " OST_NUMBER..."
+PATH_TO_MIGRATE
+
+
+.SH DESCRIPTION
+
+.P
+This is a tool to use for evacuating data from lustre OSTs or rebalancing data on OSTs when adding new ones.
+The standard procedure for this -- walking the filesystem with `lfs find' and passing files to migrate to `lsf_migrate' -- is a serial operation that does not take advantage of lustre's parallel, high-performance nature.
+This tool uses libdftw and MPI to parallelize this procedure.
+
+.P
+We've seen strong scaling efficiency of ~80% when running 20-way parallel on nodes already running mixed workloads, and thus far have stopped there without any further investigation or optimization... better performance is quite likely possible!
+
+.P
+All the normal preparations and warnings regarding lfs_migrate apply:
+.IP \(bu
+The files to be migrated must not be in use.
+.IP \(bu
+The OSTs should be deactivated on the MDS (but not on clients).
+.IP \(bu
+This does not migrate files with multiple hard links.
+lfs_migrate can be made to, but this does not pass along those options.
+See
+.B lfs_migrate_hardlinks
+in https://github.com/fasrc/lustre_utils/ for a better approach.
+
+.P
+This has not been tested on striped files, but it should work.
+There are also some limits on ost and stripe count that have compile-time overrides (look at the code).
+
+.P
+This code does a fork/exec (when not running with
+.B \-\-find-only
+, which MPI will usually complain about at runtime.
+You can suppress this warning (in OpenMPI) with: 
+.P
+.RS
+-mca mpi_warn_on_fork 0
+.RE
+
+.P
+For more on libdftw see:
+.P
+.RS
+LaFon, Misra, Bringhurst. `On Distributed File Tree Walk of Parallel File Systems'
+.RE
+.RS
+http://dl.acm.org/citation.cfm?id=2389114
+.RE
+.P
+.RS
+https://github.com/hpc/libcircle
+.RE
+.RS
+https://github.com/hpc/libdftw
+.RE
+
+
+.SH OPTIONS
+
+.TP
+.BR \-o ", " \-\-ost " OST_NUMBER"
+Migrate files off of OST_NUMBER.
+Specify multiple times if multiple OSTs are being migrated (hint: use shell brace expansion, e.g. -o{5..9}, to easily specify a range).
+
+.TP
+.BR \-b ", " \-\-ost-number-base " BASE"
+The numeric base used to interpret OST_NUMBER.
+Valid values are 10 and 16.
+Since both are used by various other tools, this option is required, out of an abundance of caution.
+
+.TP
+.BR -n ", " \-\-find-only
+Don't actually migrate the files, just print out the names of files that would be migrated.
+This is analagous to lfs_migrate's -n, but lfs_migrate is not even called in this case.
+
+.TP
+.BR \-h ", " \-\-help
+Print a short synopsis.
+
+
+.SH REQUIREMENTS
+
+.P
+lustre 1.8.7 or compatible
+
+
+.SH BUGS/TODO
+
+.P
+n/a
+
+
+.SH AUTHOR
+.P
+Copyright (c) 2013
+.RS
+.RE
+Harvard FAS Research Computing
+.RS
+.RE
+John Brunelle <john_brunelle@harvard.edu>
+.RS
+.RE
+All rights reserved.

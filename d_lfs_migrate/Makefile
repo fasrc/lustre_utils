@@ -1,3 +1,9 @@
+# Copyright (c) 2009-2013
+# Harvard FAS Research Computing
+# John Brunelle <john_brunelle@harvard.edu>
+# All right reserved.
+
+
 d_lfs_migrate: d_lfs_migrate.c
 	$(CC) -g -O2 d_lfs_migrate.c -llustreapi -ldftw -o d_lfs_migrate
 

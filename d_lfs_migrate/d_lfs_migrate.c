@@ -1,17 +1,16 @@
 /*
-See the embedded "man"-style string below for documentation.
+ * Copyright (c) 2009-2013
+ * Harvard FAS Research Computing
+ * John Brunelle <john_brunelle@harvard.edu>
+ * All right reserved.
+ */
 
+/*
 Lustre API
 	llapi_file_get_stripe doc with example code:
 		http://wiki.lustre.org/manual/LustreManual18_HTML/StripingAndIOOptions.html#50651269_11204
 	see also:
 		http://wiki.lustre.org/doxygen/b_client_io_layering/api/html/structlov__ost__data__v1.html
-
-Built upon libdftw:
-	https://github.com/hpc/libdftw
-
-John Brunelle
-Harvard FAS Research Computing
 */
 
 #include <stdlib.h>
@@ -52,76 +51,9 @@ static char *helpstr = \
 "    d_lfs_migrate - distributed, combined lsf find and lfs_migrate\n"
 "\n"
 "SYNOPSIS\n"
-"    d_lfs_migrate --ost-number-base BASE --ost OST_NUMBER... PATH_TO_MIGRATE\n"
+"    d_lfs_migrate --ost-number-base BASE --ost OST_NUMBER...  PATH_TO_MIGRATE\n"
 "\n"
-"DESCRIPTION\n"
-"    This is a tool to use for evacuating data from lustre OSTs or rebalancing \n"
-"    data on OSTs when adding new ones.  The standard procedure for this -- \n"
-"    walking the filesystem with lfs find and passing files to migrate to \n"
-"    lsf_migrate -- is a serial operation that does not take advantage of \n"
-"    lustre's parallel, high-performance nature.  This tool uses libdftw and MPI \n"
-"    to parallelize this procedure.\n"
-"\n"
-"    We've seen strong scaling efficiency of ~80% when running 20-way parallel \n"
-"    on nodes already running mixed workloads, and thus far have stopped there \n"
-"    without any further investigation or optimization... better performance is \n"
-"    quite likely possible!\n"
-"\n"
-"    All the normal preparations and warnings regarding lfs_migrate apply:\n"
-"\n"
-"        - The files to be migrated must not be in use.\n"
-"\n"
-"        - The OSTs should be deactivated on the MDS (but not on clients).\n"
-"\n"
-"        - This does not migrate files with multiple hard links.  lfs_migrate \n"
-"          can be made to, but this does not pass along those options.  See \n"
-"          `lfs_migrate_hardlinks' in https://github.com/fasrc/lustre_utils/ for \n"
-"          a better approach.\n"
-"\n"
-"    This has not been tested on striped files, but it should work.  There are \n"
-"    also some limits on ost and stripe count that have compile-time overrides \n"
-"    (look at the code).\n"
-"\n"
-"    This code does a fork/exec (when not running with --find-only), which MPI \n"
-"    will usually complain about at runtime.  You can suppress this warning (in \n"
-"    OpenMPI) with: \n"
-"\n"
-"        -mca mpi_warn_on_fork 0\n"
-"\n"
-"    For more on libdftw see:\n"
-"\n"
-"        LaFon, Misra, Bringhurst:\n"
-"        `On Distributed File Tree Walk of Parallel File Systems'\n"
-"        http://dl.acm.org/citation.cfm?id=2389114\n"
-"\n"
-"        https://github.com/hpc/libcircle\n"
-"        https://github.com/hpc/libdftw\n"
-"\n"
-"OPTIONS\n"
-"    -o, --ost OST_NUMBER\n"
-"        Migrate files off of OST_NUMBER.  Specify multiple times if multiple \n"
-"        OSTs are being migrated (hint: use shell brace expansion, e.g. \n"
-"        -o{5..9}, to easily specify a range).\n"
-"\n"
-"    -b, --ost-number-base BASE\n"
-"        The numeric base used to interpret OST_NUMBER.  Valid values are 10 \n"
-"        and 16.  Since both are used by various other tools, this option is \n"
-"        required, out of an abundance of caution.\n"
-"\n"
-"    -n, --find-only\n"
-"        Don't actually migrate the files, just print out the names of files \n"
-"        that would be migrated.  This is analagous to lfs_migrate's -n, but \n"
-"        lfs_migrate is not even called in this case.\n"
-"\n"
-"    -h, --help\n"
-"        Print this help.\n"
-"\n"
-"REQUIREMENTS\n"
-"    lustre 1.8.7 or compatible\n"
-"\n"
-"AUTHOR\n"
-"    John Brunelle\n"
-"    Harvard FAS Research Computing\n"
+"See man page for more information.\n"
 ;
 
 
